@@ -116,7 +116,7 @@ class Shape:
         self.widgets.append((widget, pos))
 
 class Label:
-    def __init__(self, pos, font, title, color, outline = None):
+    def __init__(self, pos, font, title, color, outline = True):
         self.title = title
         self.pos = pos
         self.color = color

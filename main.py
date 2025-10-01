@@ -1,12 +1,13 @@
 import time
 import os
+import threading
 from datetime import date, datetime
 
 import pygame as pg
-import threading
 
 import UI
 import utils
+import camera
 
 class App:
     def __init__(self):
@@ -33,7 +34,7 @@ class App:
         self.viewer_scroll = 0
 
         self.photo_info = {
-            "default": {"expo": "30ms",
+            "default": {"gain": "1",
             "sat": "x1.25",
             "sharpness": "1",
             "res": "640x480"}
@@ -41,7 +42,7 @@ class App:
 
         self.thumbnails = []
         self.photo_mode = "default"
-        self.show_photo_info = ["expo", "sat", "res"]
+        self.show_photo_info = ["gain", "sat", "res", "sharpness"]
 
         self.thumbnail_size = min(self.settings['thumbnail size'][0], 100), min(self.settings['thumbnail size'][1], 100)
         self.thumbnail_x = 610 // self.thumbnail_size[0] - 1
@@ -62,6 +63,8 @@ class App:
 
         self.cached_files = self.list_files()
 
+        self.camera = None
+
     def initialize_main_ui(self):
         self.ui = UI.Frame(2, 2, (420, 420))
         self.ui.place(UI.Button(None, "Video"), (1,  0))
@@ -76,8 +79,7 @@ class App:
         self.bottom_shape.place(self.battery_level_UI, (15, 20))
 
         self.photo_info_UI = UI.Label((5, 5), self.font_small, "", (255, 255, 255))
-        self.update_photo_info()
-        self.device_info_UI = UI.Label([self.resolution[0], 5], self.font_small, "BAT: 80", (255, 255, 255))
+        self.device_info_UI = UI.Label([self.resolution[0], 5], self.font_small, "BAT: ?", (255, 255, 255))
         self.device_info_UI.pos[0] -= self.device_info_UI.text.get_width() + 5
 
         self.about_shape_UI = UI.Shape((425, 5), (210, 410))
@@ -95,7 +97,7 @@ class App:
         pass
     
     def generate_thumbnails(self, start = 0):
-        # self.thumbnails = []
+        self.thumbnails = []
         path = self.settings['folder']
         files = self.list_files()
 
@@ -140,9 +142,17 @@ class App:
         self.should_update = True
         
     def update_photo_info(self):
-        self.photo_info_UI.set("\n".join([f"{key}:{value}" for key, value in self.photo_info[self.photo_mode].items() if key in self.show_photo_info]))
+        self.photo_info[self.photo_mode] = {
+            "expo" : f"{self.camera.resolution[0]}x{self.camera.resolution[1]}",
+            "sat": self.camera.saturation,
+            "sharpness": self.camera.sharpness,
+            "gain": f"{self.camera.gain}"
+        }
+        self.photo_info_UI.set("\n".join([f"{key}: {value}" for key, value in self.photo_info[self.photo_mode].items() if key in self.show_photo_info]))
 
     def initialize_camera(self):
+        self.camera = camera.Camera()
+        self.camera.start()
         self.update_photo_info()
     
     def photo_scene(self):
@@ -170,6 +180,7 @@ class App:
     def back(self):
         if self.scene == "photo":
             self.scene = "main"
+            self.camera.close()
 
         elif self.scene == "saved":
             self.scene = "main"
@@ -241,6 +252,10 @@ class App:
                     self.running = False
 
                 if event.type == pg.KEYDOWN:
+                    if self.scene == 'photo':
+                        if event.key == pg.K_SPACE:
+                            self.camera.take_photo()
+
                     if self.scene == 'main':
                         if event.key == pg.K_w:
                             self.ui.move(0)
@@ -267,6 +282,9 @@ class App:
                         self.back()
 
                     self.should_update = True
+
+            if self.scene == "photo":
+                self.should_update = True
             
             if not self.should_update:
                 continue
@@ -280,7 +298,10 @@ class App:
                 self.ui.render(self.display, self.font_medium, self.font_bold)
 
             elif self.scene == "photo":
-                self.display.blit(self.camera_surface, (0, 0))
+                self.camera_surface = self.camera.get_surface()
+                if self.camera_surface:
+                    self.display.blit(self.camera_surface, (0, 0))
+                
                 self.photo_info_UI.render(self.display)
                 self.device_info_UI.render(self.display)
 
