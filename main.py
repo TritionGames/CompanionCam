@@ -13,7 +13,7 @@ class App:
     def __init__(self):
         pg.init()
 
-        self.resolution = (640, 480)
+        self.resolution = (480, 320)
         self.display = pg.display.set_mode(self.resolution)
         pg.display.set_caption("companioncam")
 
@@ -213,7 +213,7 @@ class App:
         self.scene = "watch"
         self.selected_photo = pg.image.load(self.selected_file)
         creation_timestamp = os.path.getctime(self.selected_file)
-        creation_time = datetime.fromtimestamp(creation_timestamp).strftime('%d %b %Y')
+        creation_time = datetime.fromtimestamp(creation_timestamp).strftime('%d %b %Y %H:%M:%S')
         self.photo_info_UI.set(f"resolution: {self.selected_photo.get_width()}x{self.selected_photo.get_height()}\ndate: {creation_time}")
 
     #https://www.pygame.org/pcr/transform_scale/index.php
@@ -300,7 +300,11 @@ class App:
             elif self.scene == "photo":
                 self.camera_surface = self.camera.get_surface()
                 if self.camera_surface:
-                    self.display.blit(self.camera_surface, (0, 0))
+                    if self.camera_surface.size != self.resolution:
+                        self.display.blit(pg.transform.scale(self.camera_surface, self.resolution), (0, 0))
+                    
+                    else:
+                        self.display.blit(self.camera_surface, (0, 0))
                 
                 self.photo_info_UI.render(self.display)
                 self.device_info_UI.render(self.display)

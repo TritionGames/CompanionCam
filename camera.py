@@ -9,17 +9,19 @@ from picamera2.encoders import H264Encoder
 class Camera:
  def __init__(self):
   self.fps = 60
-  self.sharpness = 10
-  self.resolution = (640, 480)
-  self.saturation = 1.0
-  self.gain = 16
+  self.sharpness = 5
+  self.contrast = 1.2
+  self.resolution = (320, 240)
+  self.saturation = 0.8
+  self.gain = 4
   self.picam2 = Picamera2()
   video_config = self.picam2.create_video_configuration(main={"size": self.resolution}, buffer_count = 3)
   self.picam2.configure(video_config)
   self.picam2.set_controls({"FrameRate": self.fps,
            "Sharpness": self.sharpness,
+           "Contrast": self.contrast,
            'Saturation': self.saturation,
-           "ColourGains": (2, 2),
+           "ColourGains": (2.5, 2),
            "AeEnable": True,
            "AnalogueGain": self.gain})
 
