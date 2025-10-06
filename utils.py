@@ -18,7 +18,7 @@ def list_dir(path):
 
         filename, filetype = file.split('.')
     
-        if not filetype in ("png", "jpg"):
+        if not filetype in ("png", "jpg", "webp"):
             continue
 
         files.append(file)

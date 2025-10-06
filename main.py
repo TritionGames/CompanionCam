@@ -7,13 +7,13 @@ import pygame as pg
 
 import UI
 import utils
-import camera
+# import camera
 
 class App:
     def __init__(self):
         pg.init()
 
-        self.resolution = (480, 320)
+        self.resolution = (640, 480)
         self.display = pg.display.set_mode(self.resolution)
         pg.display.set_caption("companioncam")
 
@@ -40,9 +40,24 @@ class App:
             "res": "640x480"}
         }
 
+        self.video_info = {
+            "default": {"gain": "1",
+            "sat": "x1.25",
+            "sharpness": "1",
+            "res": "640x480",
+            "fps": 60}
+        }
+
+        self.file_info = {
+            "size": True,
+            "date": True,
+            "resolution": True}
+
         self.thumbnails = []
+        self.video_mode = "default"
         self.photo_mode = "default"
         self.show_photo_info = ["gain", "sat", "res", "sharpness"]
+        self.show_video_info = ["gain", "sat", "res", "sharpness", "fps"]
 
         self.thumbnail_size = min(self.settings['thumbnail size'][0], 100), min(self.settings['thumbnail size'][1], 100)
         self.thumbnail_x = 610 // self.thumbnail_size[0] - 1
@@ -64,13 +79,17 @@ class App:
         self.cached_files = self.list_files()
 
         self.camera = None
+        self.camera_surface = None
+
+        # self.popup = UI.PopUp(self.font, self.font_smaller, "set resolution:", ['1920x1080', '640x480'])
+        self.pop_ups = None
 
     def initialize_main_ui(self):
         self.ui = UI.Frame(2, 2, (420, 420))
-        self.ui.place(UI.Button(None, "Video"), (1,  0))
+        self.ui.place(UI.Button(self.video_scene, "Video"), (1,  0))
         self.ui.place(UI.Button(self.photo_scene, "Photo"), (0, 0))
         self.ui.place(UI.Button(self.saved_scene, "Saved"), (0, 1))
-        self.ui.place(UI.Button(None, "Options"), (1, 1))
+        self.ui.place(UI.Button(self.options_scene, "Options"), (1, 1))
 
         self.formatted_date = date.today().strftime("%d/%m/%y")
 
@@ -85,7 +104,8 @@ class App:
         self.about_shape_UI = UI.Shape((425, 5), (210, 410))
         self.about_shape_UI.place(UI.Label((0, 0), self.font_tiny, utils.load_file("about.txt"), (255, 255, 255)), (5, 5))
 
-        self.photo_info_UI = UI.Label((5, 5), self.font_small, "None", (255, 255, 255), outline=True)
+        self.photo_info_UI = UI.Label((5, 5), self.font_small, "camera not started!", (255, 255, 255), outline=True)
+        self.video_info_UI = UI.Label((5, 5), self.font_small, "camera not started!", (255, 255, 255), outline=True)
 
     def list_files(self):
         return utils.list_dir(self.settings['folder'])
@@ -140,6 +160,10 @@ class App:
             self.selected_photo_id += self.thumbnail_x
 
         self.should_update = True
+
+    def video_scene(self):
+        self.scene = 'video'
+        self.update_video_info()
         
     def update_photo_info(self):
         self.photo_info[self.photo_mode] = {
@@ -150,10 +174,27 @@ class App:
         }
         self.photo_info_UI.set("\n".join([f"{key}: {value}" for key, value in self.photo_info[self.photo_mode].items() if key in self.show_photo_info]))
 
+    def update_video_info(self):
+        # self.video_info[self.video_mode] = {
+        #     "expo" : f"{self.camera.resolution[0]}x{self.camera.resolution[1]}",
+        #     "sat": self.camera.saturation,
+        #     "sharpness": self.camera.sharpness,
+        #     "gain": f"{self.camera.gain}",
+        #     "fps": 60
+        # }
+        self.video_info_UI.set("\n".join([f"{key}: {value}" for key, value in self.video_info[self.video_mode].items() if key in self.show_video_info]))
+
+    def options_scene(self):
+        self.scene = "options"
+
     def initialize_camera(self):
-        self.camera = camera.Camera()
-        self.camera.start()
-        self.update_photo_info()
+        try:
+            self.camera = camera.Camera()
+            self.camera.start()
+            self.update_photo_info()
+
+        except Exception as e:
+            print("failed to start camera: " + str(e))
     
     def photo_scene(self):
         self.scene = "photo"
@@ -161,6 +202,8 @@ class App:
 
     def saved_scene(self):
         self.scene = "saved"
+        self.viewer_scroll = 0
+        self.selected_photo_id = 0
         threading.Thread(target=self.generate_thumbnails).start()
 
     def start_up_screen(self):
@@ -176,17 +219,22 @@ class App:
         self.font_small_bold = pg.font.Font('F25_Bank_Printer_Bold.ttf', 20)
         self.font_small = pg.font.Font('F25_Bank_Printer_Bold.ttf', 20)
         self.font_tiny = pg.font.Font('F25_Bank_Printer_Bold.ttf', 16)
+        self.font_smaller = pg.font.Font('F25_Bank_Printer_Bold.ttf', 18)
+
+    def close_camera(self):
+        if self.camera:
+            self.camera.close()
 
     def back(self):
         if self.scene == "photo":
             self.scene = "main"
-            self.camera.close()
+            self.close_camera()
 
-        elif self.scene == "saved":
-            self.scene = "main"
-        
         elif self.scene == "watch":
             self.scene = "saved"
+
+        else:
+            self.scene = "main"
 
     def move_selection(self, key):
         if key == pg.K_w and self.selected_photo_id >= self.thumbnail_x:
@@ -212,9 +260,20 @@ class App:
     def show_selection(self):
         self.scene = "watch"
         self.selected_photo = pg.image.load(self.selected_file)
+        file_type = self.selected_file.split('.')[-1]
         creation_timestamp = os.path.getctime(self.selected_file)
         creation_time = datetime.fromtimestamp(creation_timestamp).strftime('%d %b %Y %H:%M:%S')
-        self.photo_info_UI.set(f"resolution: {self.selected_photo.get_width()}x{self.selected_photo.get_height()}\ndate: {creation_time}")
+        size = round(os.path.getsize(self.selected_file)/1000, 2)
+
+        string = ""
+        if self.file_info["resolution"]:
+            string += f"resolution: {self.selected_photo.get_width()}x{self.selected_photo.get_height()}\n"
+        if self.file_info["date"]:
+            string += f"date: {creation_time}\n"
+        if self.file_info["size"]:
+            string += f"size: {size} kb ({file_type})\n"
+
+        self.photo_info_UI.set(string)
 
     #https://www.pygame.org/pcr/transform_scale/index.php
     def aspect_scale(self, img, size):
@@ -241,7 +300,7 @@ class App:
             else:
                 sy = by
 
-        return pg.transform.smoothscale(img, (sx,sy)), (sx, sy)
+        return pg.transform.scale(img, (sx,sy)), (sx, sy)
 
     def run(self):
         while self.running:
@@ -252,34 +311,43 @@ class App:
                     self.running = False
 
                 if event.type == pg.KEYDOWN:
-                    if self.scene == 'photo':
-                        if event.key == pg.K_SPACE:
-                            self.camera.take_photo()
-
-                    if self.scene == 'main':
-                        if event.key == pg.K_w:
-                            self.ui.move(0)
-
-                        if event.key == pg.K_d:
-                            self.ui.move(1)
-
+                    if self.pop_ups:           
                         if event.key == pg.K_s:
-                            self.ui.move(2)
-                        
-                        if event.key == pg.K_a:
-                            self.ui.move(3)
-
+                            self.pop_ups.move_down()
+                        if event.key == pg.K_w:
+                            self.pop_ups.move_up()
                         if event.key == pg.K_SPACE:
-                            self.ui.call_button()
+                            self.pop_ups.call(self)
 
-                    elif self.scene == "saved":
-                        if event.key == pg.K_SPACE:
-                            self.show_selection()
+                    else:         
+                        if self.scene == 'photo':
+                            if event.key == pg.K_SPACE:
+                                self.camera.take_photo()
 
-                        self.move_selection(event.key)
+                        if self.scene == 'main':
+                            if event.key == pg.K_w:
+                                self.ui.move(0)
 
-                    if event.key == pg.K_ESCAPE:
-                        self.back()
+                            if event.key == pg.K_d:
+                                self.ui.move(1)
+
+                            if event.key == pg.K_s:
+                                self.ui.move(2)
+                            
+                            if event.key == pg.K_a:
+                                self.ui.move(3)
+
+                            if event.key == pg.K_SPACE:
+                                self.ui.call_button()
+
+                        elif self.scene == "saved":
+                            if event.key == pg.K_SPACE:
+                                self.show_selection()
+
+                            self.move_selection(event.key)
+
+                        if event.key == pg.K_ESCAPE:
+                            self.back()
 
                     self.should_update = True
 
@@ -291,6 +359,9 @@ class App:
             
             self.should_update = False
 
+            if self.pop_ups:
+                self.pop_ups.render(self.display)
+
             if self.scene == "main":
                 self.display.blit(self.background, (0, 0))
                 self.bottom_shape.render(self.display)
@@ -298,9 +369,14 @@ class App:
                 self.ui.render(self.display, self.font_medium, self.font_bold)
 
             elif self.scene == "photo":
-                self.camera_surface = self.camera.get_surface()
+                if self.camera:
+                    self.camera_surface = self.camera.get_surface()
+
+                else:
+                    self.display.fill((0, 0, 0))
+
                 if self.camera_surface:
-                    if self.camera_surface.size != self.resolution:
+                    if self.camera_surface.resolution != self.resolution:
                         self.display.blit(pg.transform.scale(self.camera_surface, self.resolution), (0, 0))
                     
                     else:
@@ -336,6 +412,13 @@ class App:
                 self.display.blit(surface, (self.resolution[0] / 2 - size[0]/2, self.resolution[1] / 2 - size[1]/2))
 
                 self.photo_info_UI.render(self.display)
+
+            elif self.scene == "video":
+                self.display.fill((0, 0, 0))
+                self.video_info_UI.render(self.display)
+
+            elif self.scene == "options":
+                self.display.blit(self.background, (0, 0))
 
             pg.display.update()
 

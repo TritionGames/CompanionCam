@@ -1,5 +1,7 @@
 import pygame as pg
 
+RESOLUTION = 640, 480
+
 class Frame:
     def __init__(self, width, height, framesize = (640, 480)):
         self.widgets = [[0 for _ in range(width)] for _ in range(height)]
@@ -146,3 +148,44 @@ class Label:
             self.title = title
             self.text = self.font.render(title, True, self.color)
             self.generate_outline()
+
+class PopUp:
+    def __init__(self, font: pg.font.Font, small_font: pg.font.Font, string: str, options: list):
+        self.options = options
+        self.active_id = 0
+        self.string = string
+        self.font = font
+        self.small_font = small_font
+        # self.text = self.font.render(string, False, (255, 255, 255))
+        self.label = Label((0, 0), self.font, string, (255, 255, 255))
+        self.rect = pg.Rect(50, 50, 540, 380)
+
+    def render(self, display):
+        pg.draw.rect(display, (50, 50, 50), self.rect)
+        pg.draw.rect(display, (25, 25, 25), self.rect, 3)
+        # display.blit(self.text, (RESOLUTION[0] / 2 - self.text.get_width()/2, RESOLUTION[1] / 2 - self.text.get_height()/2 - 100))
+        self.label.pos = (RESOLUTION[0] / 2 - self.label.text.get_width()/2, RESOLUTION[1] / 2 - self.label.text.get_height()/2 - 100)
+        self.label.render(display)
+
+        for i, options in enumerate(self.options):
+            text = self.small_font.render(options, True, (255, 255, 255) if i != self.active_id else (0, 255, 0))
+            pg.draw.rect(display, (40, 40, 40), (75 - 8, 230 + i * 35 - 8, text.get_width() + 12, 30))
+            pg.draw.rect(display, (25, 25, 25), (75 - 8, 230 + i * 35 - 8, text.get_width() + 12, 30), 3)
+            display.blit(text, (75, 230 + i * 35))
+
+    def move_down(self):
+        if self.active_id >= len(self.options) - 1:
+            return
+        
+        self.active_id += 1
+
+    def move_up(self):
+        if self.active_id <= 0:
+            return
+        
+        self.active_id -= 1
+
+    def call(self, app):
+        print('hello', self.options[self.active_id])
+
+        app.back()
