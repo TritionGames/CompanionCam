@@ -6,6 +6,16 @@ import numpy as np
 import pygame as pg
 
 from datetime import datetime
+import giturlparse
+
+def update_latest(url = "https://github.com/TritionGames/CompanionCam.git"):
+    if not giturlparse.validate(url):
+        print(f"url not valid: {url}")
+        return
+
+    if input("delete eveerything and reinstall online git repo\nCONFIRM (Y/N) ").lower() == "y":
+        os.system("rm -rf CompanionCam")
+        os.system(f"git clone {url}")
 
 def load_json(path):
     with open(path, 'r') as file:
