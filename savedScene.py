@@ -6,8 +6,7 @@ import threading
 from multiprocessing import Process
 import moviepy
 import time
-import pydub
-from pydub.playback import play
+
 from datetime import datetime
 
 import UI
@@ -39,7 +38,6 @@ class SavedScene:
         self.gap_size = 610 - (self.thumbnail_x * self.thumbnail_size[0]) - (10 * self.thumbnail_x)
         self.selected = False
         self.video = False
-        self.video_audio = None
         self.timestamp = 0
         self.playback = 0
         self.start_playback = 0
@@ -166,7 +164,7 @@ class SavedScene:
         pg.mixer.music.pause()
 
     def unpause(self):
-        if self.video_audio and not pg.mixer.music.get_busy():
+        if not pg.mixer.music.get_busy():
             pg.mixer.music.play()
 
         pg.mixer.music.unpause()
@@ -209,7 +207,7 @@ class SavedScene:
         else:
             self.start_playback -= 5
 
-        if self.video_audio and self.playback == 0:                
+        if pg.mixer.music.get_busy() and self.playback == 0:                
             pg.mixer.music.set_pos(self.timestamp)
 
     def go_back(self):
@@ -228,7 +226,7 @@ class SavedScene:
         else:
             self.start_playback += 5
 
-        if self.video_audio and self.playback == 0:
+        if pg.mixer.music.get_busy() and self.playback == 0:
             pg.mixer.music.set_pos(self.timestamp)
         
         # if (time.time() - self.start_playback) > self.loaded_clip.end:
@@ -297,7 +295,6 @@ fps: {round(self.loaded_clip.fps, 2)} {f"(displaying: {self.app.settings["max fp
         if is_video:
             self.video = True
             self.loaded_clip = moviepy.VideoFileClip(self.selected_file)
-            self.video_audio = pydub.AudioSegment.from_file(self.selected_file, format=self.file_format)
             utils.convert_to_mp3(self.selected_file)
             pg.mixer.music.load(f"{self.selected_file[:-4]}.mp3")
             pg.mixer.music.set_volume(self.app.settings["playback volume"])
