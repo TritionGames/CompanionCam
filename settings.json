@@ -1,2 +1,5 @@
 {"folder": "/home/trition/Pictures/stuff/",
-"thumbnail size": [100, 80]}
+"thumbnail size": [100, 80],
+"default fps": 30,
+"max fps": 30,
+"playback volume": 1}

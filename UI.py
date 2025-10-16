@@ -2,8 +2,14 @@ import pygame as pg
 
 RESOLUTION = 640, 480
 
-class Frame:
+class StandardUI:
+    def __init__(self):
+        self.use_icon = False
+        self.icon = None
+
+class Frame(StandardUI):
     def __init__(self, width, height, framesize = (640, 480)):
+        super().__init__()
         self.widgets = [[0 for _ in range(width)] for _ in range(height)]
         self.width = width
         self.height = height
@@ -86,22 +92,32 @@ class Frame:
                 pg.draw.rect(display, (50, 50, 50), (x * gap[0] + 5, y * gap[1] + 5, gap[0] - 10, gap[1] - 10))  
                 pg.draw.rect(display, (25, 25, 25), (x * gap[0] + 5, y * gap[1] + 5, gap[0] - 10, gap[1] - 10), 3)
 
-                if not (widget.title, is_active) in self.cached:
-                    self.cached[(widget.title, is_active)] = (active_font if is_active else font).render(widget.title, True, color)
-                
-                text = self.cached[(widget.title, is_active)]
+                if widget.use_icon:
+                    icon_size = widget.icon.get_size()
 
-                center = (x*gap[0] + padding[0], y*gap[1] + padding[1])
-                display.blit(text, (center[0] - text.get_width()/2, center[1] - text.get_height()/2))
+                    display.blit(widget.icon, (x * gap[0] + 30 - icon_size[0]/2, y * gap[1] + 30 - icon_size[1]/2))
 
-class Button:
-    def __init__(self, callback, title, args = ()):
+                else:
+                    if not (widget.title, is_active) in self.cached:
+                        self.cached[(widget.title, is_active)] = (active_font if is_active else font).render(widget.title, True, color)
+                    
+                    text = self.cached[(widget.title, is_active)]
+
+                    center = (x*gap[0] + padding[0], y*gap[1] + padding[1])
+                    display.blit(text, (center[0] - text.get_width()/2, center[1] - text.get_height()/2))
+
+class Button(StandardUI):
+    def __init__(self, callback, title, args = (), icon = None):
+        super().__init__()
         self.title = title
         self.callback = callback
         self.args = args
+        self.use_icon = bool(icon)
+        self.icon = icon
 
-class Shape:
+class Shape(StandardUI):
     def __init__(self, pos, size):
+        super().__init__()
         self.pos = pos
         self.size = size
         self.widgets = []
@@ -117,8 +133,9 @@ class Shape:
     def place(self, widget, pos):
         self.widgets.append((widget, pos))
 
-class Label:
+class Label(StandardUI):
     def __init__(self, pos, font, title, color, outline = True):
+        super().__init__()
         self.title = title
         self.pos = pos
         self.color = color
@@ -149,8 +166,9 @@ class Label:
             self.text = self.font.render(title, True, self.color)
             self.generate_outline()
 
-class PopUp:
+class PopUp(StandardUI):
     def __init__(self, font: pg.font.Font, small_font: pg.font.Font, string: str, options: list):
+        super().__init__()
         self.options = options
         self.active_id = 0
         self.string = string
