@@ -1,9 +1,6 @@
 import time
-import os
-import threading
-from datetime import date, datetime
+from datetime import date
 
-import pydub
 import pygame as pg
 
 import UI
