@@ -296,9 +296,10 @@ fps: {round(self.loaded_clip.fps, 2)} {f"(displaying: {self.app.settings["max fp
             self.video = True
             self.loaded_clip = moviepy.VideoFileClip(self.selected_file)
             utils.convert_to_mp3(self.selected_file)
-            pg.mixer.music.load(f"{self.selected_file[:-4]}.mp3")
-            pg.mixer.music.set_volume(self.app.settings["playback volume"])
-            pg.mixer.music.play()
+            if self.app.cna_play_audio:
+	            pg.mixer.music.load(f"{self.selected_file[:-4]}.mp3")
+	            pg.mixer.music.set_volume(self.app.settings["playback volume"])
+	            pg.mixer.music.play()
             self.start_playback = time.time()
             self.playback = 0
             self.app.variable_fps = min(self.loaded_clip.fps, self.app.settings['max fps'])
@@ -322,8 +323,11 @@ fps: {round(self.loaded_clip.fps, 2)} {f"(displaying: {self.app.settings["max fp
     def leave(self):
         if self.selected:
             # self.audio_thread.kill()
-            pg.mixer.music.stop()
-            pg.mixer.music.unload()
+
+            if self.app.can_play_audio and pg.mixer.music.get_busy():
+                pg.mixer.music.stop()
+
+                pg.mixer.music.unload()
 
             if self.loaded_clip:
                 self.loaded_clip.close()

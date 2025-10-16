@@ -8,12 +8,16 @@ import utils
 import photoScene
 import savedScene
 import iconManager
-# import camera
 
 class App:
     def __init__(self):
         pg.init()
-
+        self.can_play_audio = False
+        try:
+            pg.mixer.init()
+            self.can_play_audio = True
+        except:
+            pass
         self.resolution = (640, 480)
         self.display = pg.display.set_mode(self.resolution)
         pg.display.set_caption("companioncam")
@@ -33,13 +37,6 @@ class App:
         self.start_up_screen()
 
         self.load_assets()
-
-        self.photo_info = {
-            "default": {"gain": "1",
-            "sat": "x1.25",
-            "sharpness": "1",
-            "res": "640x480"}
-        }
 
         self.video_info = {
             "default": {"gain": "1",
@@ -63,11 +60,7 @@ class App:
         time.sleep(0.3)
         self.should_update = True
 
-        self.camera_surface = pg.Surface((640, 480))
         self.scene = "main"
-
-        self.camera = None
-        self.camera_surface = None
 
         # self.popup = UI.PopUp(self.font, self.font_smaller, "set resolution:", ['1920x1080', '640x480'])
         self.pop_ups = None
