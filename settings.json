@@ -1,5 +1,13 @@
-{"folder": "/home/cam/CompanionCam/saved/",
+{"folder": "/home/trition/Pictures/stuff",
 "thumbnail size": [100, 80],
 "default fps": 30,
 "max fps": 30,
-"playback volume": 1}
+"playback volume": 1,
+"camera settings": {"fps": 60,
+"resolution": [640, 480],
+"contrast": 1.2,
+"sharpness": 5,
+"saturation": 1,
+"gain": 4,
+"color gains": [2.5, 5],
+"bitrate": 10000000}}

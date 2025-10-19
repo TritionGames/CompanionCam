@@ -18,8 +18,8 @@ def load_file(path):
 def format_seconds(timestamp):
     hours, remainder = divmod(int(timestamp), 3600)
     minutes, seconds = divmod(int(remainder), 60)
-    miliseconds = str(round(timestamp % 1, 2) * 1000)[:2]
-    return f"{minutes:02d}:{seconds:02d}.{miliseconds}"
+    miliseconds = int((timestamp % 1) * 100)
+    return f"{minutes:02d}:{seconds:02d}.{miliseconds:02d}"
 
 def convert_to_mp3(path):
     name = f"{path[:-4]}.mp3"

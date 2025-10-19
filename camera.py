@@ -3,6 +3,8 @@ import os
 import numpy as np
 import time
 
+import utils
+
 from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder
 
@@ -15,17 +17,18 @@ class Camera:
   self.saturation = 0.8
   self.gain = 4
   self.picam2 = Picamera2()
-  video_config = self.picam2.create_video_configuration(main={"size": self.resolution}, buffer_count = 3)
+  video_config = self.picam2.create_video_configuration(main={"size": self.camera_settings['resolution']}, buffer_count = 3)
   self.picam2.configure(video_config)
-  self.picam2.set_controls({"FrameRate": self.fps,
-           "Sharpness": self.sharpness,
-           "Contrast": self.contrast,
-           'Saturation': self.saturation,
-           "ColourGains": (2.5, 2),
+  self.camera_settings = utils.load_json("settings.json")["camera settings"]
+  self.picam2.set_controls({"FrameRate": self.camera_settings['fps'],
+           "Sharpness": self.camera_settings['sharpness'],
+           "Contrast": self.camera_settings['contrast'],
+           'Saturation': self.camera_settings['saturation'],
+           "ColourGains": self.camera_settings['color gains'],
            "AeEnable": True,
-           "AnalogueGain": self.gain})
+           "AnalogueGain": self.camera_settings['gain']})
 
-  self.encoder = H264Encoder(10000000)
+  self.encoder = H264Encoder(self.camera_settings['bitrate'])
 
   self.recording = False
   self.active = False
@@ -34,7 +37,7 @@ class Camera:
   self.picam2.capture_file(f"saved/IMG_{str(time.time()).replace('.', '_')}.png")
 
  def start_video(self):
-  self.start_recording = True
+  self.recording = True
   self.picam2.start_recording(self.encoder, "temp.h264")
 
  def end_video(self):
@@ -43,6 +46,12 @@ class Camera:
 
   if state := os.system(f"ffmpeg -r {self.fps} -i temp.h264 -c:v copy -r {self.fps} MP4_{time.time()}.mp4"):
    print(f"ffmpeg failed to compile ({state})")
+
+ def toggle_video(self):
+  if not self.recording:
+    self.start_video()
+  else:
+    self.end_video()
 
  def get_surface(self):
   if not self.active:
