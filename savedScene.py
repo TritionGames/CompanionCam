@@ -29,7 +29,7 @@ class SavedScene:
             "size": True,
             "date": True,
             "resolution": True,
-            "sharpness index": True}
+            "sharpness index": False}
 
         self.viewer_scroll = 0
         self.thumbnails = []
@@ -43,9 +43,10 @@ class SavedScene:
         self.start_playback = 0
         self.frame = 0
         self.loaded_clip = None
+        self.should_play_audio = self.app.can_play_audio
         self.pawsed_timestamp = 0
         self.start_pawsed = 0
-
+        self.file_creation_date = None
         self.photo_info_UI = UI.Label((5, 5), self.app.font_small, "", (255, 255, 255))
         self.playback_info_UI = UI.Label((5, 5), self.app.font_small, "", (255, 255, 255))
 
@@ -103,7 +104,7 @@ class SavedScene:
 
             surface.blit(self.app.icons.get_slice(0))
 
-        return surface, exact_path
+        return surface, exact_path, file
 
     def generate_thumbnails(self, start = 0):
         self.thumbnails = []
@@ -161,10 +162,11 @@ class SavedScene:
     def pause(self):
         self.playback = 1
         self.start_pawsed = time.time()
-        pg.mixer.music.pause()
+        if self.should_play_audio:
+            pg.mixer.music.pause()
 
     def unpause(self):
-        if not pg.mixer.music.get_busy():
+        if not pg.mixer.music.get_busy() and self.should_play_audio:
             pg.mixer.music.play()
 
         pg.mixer.music.unpause()
@@ -179,7 +181,8 @@ class SavedScene:
             print((time.time() - self.start_pawsed))
             self.start_pawsed = False
 
-        pg.mixer.music.set_pos(time.time() - self.start_playback)
+        if self.should_play_audio:
+            pg.mixer.music.set_pos(time.time() - self.start_playback)
 
     def toggle_pause(self):
         if self.playback == 0:
@@ -202,12 +205,14 @@ class SavedScene:
             self.start_pawsed = False
             self.playback = 1
             self.start_playback = time.time() - self.loaded_clip.end
-            pg.mixer.music.stop()
+            
+            if self.should_play_audio:
+                pg.mixer.music.stop()
 
         else:
             self.start_playback -= 5
 
-        if pg.mixer.music.get_busy() and self.playback == 0:                
+        if pg.mixer.music.get_busy() and self.should_play_audio and self.playback == 0:                
             pg.mixer.music.set_pos(self.timestamp)
 
     def go_back(self):
@@ -226,7 +231,7 @@ class SavedScene:
         else:
             self.start_playback += 5
 
-        if pg.mixer.music.get_busy() and self.playback == 0:
+        if pg.mixer.music.get_busy() and self.playback == 0 and self.should_play_audio:
             pg.mixer.music.set_pos(self.timestamp)
         
         # if (time.time() - self.start_playback) > self.loaded_clip.end:
@@ -249,7 +254,7 @@ class SavedScene:
                 self.app.display.blit(surface, (self.app.resolution[0]/2 - size[0]/2, self.app.resolution[1]/2 - size[1]/2))
 
                 self.playback_info_UI.set(f"""resolution: {int(size[0])}x{int(size[1])}
-date: {utils.get_creation_date(self.selected_file)}
+date: {self.file_creation_date}
 size: {utils.return_estimated_file_size(self.selected_file)}
 fps: {round(self.loaded_clip.fps, 2)} {f"(displaying: {self.app.settings["max fps"]})" if self.loaded_clip.fps > self.app.settings["max fps"] else ""}
 {utils.format_seconds(self.timestamp)}s / {utils.format_seconds(self.loaded_clip.end)}""")
@@ -276,7 +281,7 @@ fps: {round(self.loaded_clip.fps, 2)} {f"(displaying: {self.app.settings["max fp
                 bordercolor = (25, 25, 25)
 
                 if i == self.selected_photo_id:
-                    self.selected_file = surface[1]
+                    self.selected_file, self.selected_name = surface[1], surface[2]
                     bordercolor = (255, 0, 0)
 
                 pg.draw.rect(self.app.display, bordercolor, (pos[0] - 5, pos[1] - 5, self.thumbnail_size[0] + 10, self.thumbnail_size[1] + 10))
@@ -292,11 +297,18 @@ fps: {round(self.loaded_clip.fps, 2)} {f"(displaying: {self.app.settings["max fp
         self.file_format = self.selected_file.split('.')[-1]
         is_video = True if self.file_format in ["mp4"] else False
 
+        try:
+            unix_time = self.selected_name[self.selected_name.find("_")+1:self.selected_name.find(".")].replace("_", ".")
+            self.file_creation_date = utils.convert_unix_to_date(float(unix_time))
+        except:
+            self.file_creation_date = utils.get_creation_date(self.selected_file)
+
         if is_video:
             self.video = True
             self.loaded_clip = moviepy.VideoFileClip(self.selected_file)
-            utils.convert_to_mp3(self.selected_file)
-            if self.app.cna_play_audio:
+            self.should_play_audio = self.loaded_clip.audio and self.app.can_play_audio
+            if self.should_play_audio:
+	            utils.convert_to_mp3(self.selected_file)
 	            pg.mixer.music.load(f"{self.selected_file[:-4]}.mp3")
 	            pg.mixer.music.set_volume(self.app.settings["playback volume"])
 	            pg.mixer.music.play()
@@ -312,7 +324,7 @@ fps: {round(self.loaded_clip.fps, 2)} {f"(displaying: {self.app.settings["max fp
         if self.file_info["resolution"]:
             string += f"resolution: {self.selected_photo.get_width()}x{self.selected_photo.get_height()}\n"
         if self.file_info["date"]:
-            string += f"date: {utils.get_creation_date(self.selected_file)}\n"
+            string += f"date: {self.file_creation_date}\n"
         if self.file_info["size"]:
             string += f"size: {utils.return_estimated_file_size(self.selected_file)}\n"
         if self.file_info["sharpness index"]:

@@ -15,11 +15,17 @@ def load_file(path):
     with open(path, 'r') as file:
         return file.read()
 
+def calculate_brightness(color):
+    return (color.r * 2.99 + color.g * 0.587 + color.b * 0.114)
+
 def format_seconds(timestamp):
     hours, remainder = divmod(int(timestamp), 3600)
     minutes, seconds = divmod(int(remainder), 60)
     miliseconds = int((timestamp % 1) * 100)
     return f"{minutes:02d}:{seconds:02d}.{miliseconds:02d}"
+
+def convert_unix_to_date(unix_time):
+    return datetime.fromtimestamp(unix_time).strftime('%d %b %Y %H:%M:%S')
 
 def convert_to_mp3(path):
     name = f"{path[:-4]}.mp3"

@@ -9,16 +9,13 @@ from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder
 
 class Camera:
- def __init__(self):
-  self.fps = 60
-  self.sharpness = 5
-  self.contrast = 1.2
-  self.resolution = (320, 240)
-  self.saturation = 0.8
-  self.gain = 4
+ def __init__(self, app):
+  self.app = app
+  self.camera_settings = self.app.settings["camera settings"]
   self.picam2 = Picamera2()
-  video_config = self.picam2.create_video_configuration(main={"size": self.camera_settings['resolution']}, buffer_count = 3)
+  video_config = self.picam2.create_video_configuration(main={"size": self.camera_settings['resolution']}, buffer_count = 4)
   self.picam2.configure(video_config)
+
   self.camera_settings = utils.load_json("settings.json")["camera settings"]
   self.picam2.set_controls({"FrameRate": self.camera_settings['fps'],
            "Sharpness": self.camera_settings['sharpness'],
@@ -38,13 +35,15 @@ class Camera:
 
  def start_video(self):
   self.recording = True
-  self.picam2.start_recording(self.encoder, "temp.h264")
+  self.app.video_scene.began_recording = time.time()
+  self.picam2.start_encoder(self.encoder, "temp.h264")
 
  def end_video(self):
-  self.picam2.stop_recording()
+  self.picam2.stop_encoder()
   self.recording = False
+  fps = self.camera_settings["fps"]
 
-  if state := os.system(f"ffmpeg -r {self.fps} -i temp.h264 -c:v copy -r {self.fps} MP4_{time.time()}.mp4"):
+  if state := os.system(f"ffmpeg -r {fps} -i temp.h264 -c:v copy -r {fps} saved/MP4_{str(time.time()).replace('.', '_')}.mp4"):
    print(f"ffmpeg failed to compile ({state})")
 
  def toggle_video(self):

@@ -154,11 +154,13 @@ class Label(StandardUI):
         self.outline_surface.blit(self.outline_text, (2, 4))
         self.outline_surface.blit(self.outline_text, (2, 0))    
 
-    def render(self, display):
-        if self.use_outline:
-            display.blit(self.outline_surface, (self.pos[0] - 2, self.pos[1] - 2))
+    def render(self, display, position = None):
+        pos = position or self.pos
 
-        display.blit(self.text, self.pos)
+        if self.use_outline:
+            display.blit(self.outline_surface, (pos[0] - 2, pos[1] - 2))
+
+        display.blit(self.text, pos)
 
     def set(self, title):
         if self.use_outline:

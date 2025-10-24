@@ -1,12 +1,15 @@
+
 import time
 from datetime import date
 
 import pygame as pg
 
 import UI
+import camera
 import utils
 import photoScene
 import savedScene
+import videoScene
 import iconManager
 
 class App:
@@ -50,10 +53,11 @@ class App:
         self.show_photo_info = ["gain", "sat", "res", "sharpness"]
         self.show_video_info = ["gain", "sat", "res", "sharpness", "fps"]
 
+        self.icons = iconManager.Icons(self)
+
         self.photo_scene = photoScene.PhotoScene(self)
         self.saved_scene = savedScene.SavedScene(self)
-
-        self.icons = iconManager.Icons(self)
+        self.video_scene = videoScene.VideoScene(self)
 
         self.initialize_main_ui()
 
@@ -65,12 +69,15 @@ class App:
         # self.popup = UI.PopUp(self.font, self.font_smaller, "set resolution:", ['1920x1080', '640x480'])
         self.pop_ups = None
 
+        self.camera = camera.Camera(self)
+        self.camera.start()
+
     def load_assets(self):
         self.video_overlay = pg.image.load("video_overlay.png").convert_alpha()
 
     def initialize_main_ui(self):
         self.ui = UI.Frame(2, 2, (420, 420))
-        self.ui.place(UI.Button(self.video_scene, "Video"), (1,  0))
+        self.ui.place(UI.Button(self.video_scene.set, "Video"), (1,  0))
         self.ui.place(UI.Button(self.photo_scene.set, "Photo"), (0, 0))
         self.ui.place(UI.Button(self.saved_scene.set, "Saved"), (0, 1))
         self.ui.place(UI.Button(self.options_scene, "Options"), (1, 1))
@@ -87,24 +94,8 @@ class App:
         self.about_shape_UI = UI.Shape((425, 5), (210, 410))
         self.about_shape_UI.place(UI.Label((0, 0), self.font_tiny, utils.load_file("about.txt"), (255, 255, 255)), (5, 5))
 
-        self.video_info_UI = UI.Label((5, 5), self.font_small, "camera not started!", (255, 255, 255), outline=True)
-
     def list_files(self):
         return utils.list_dir(self.settings['folder'])
-
-    def video_scene(self):
-        self.scene = 'video'
-        self.update_video_info()
-
-    def update_video_info(self):
-        # self.video_info[self.video_mode] = {
-        #     "expo" : f"{self.camera.resolution[0]}x{self.camera.resolution[1]}",
-        #     "sat": self.camera.saturation,
-        #     "sharpness": self.camera.sharpness,
-        #     "gain": f"{self.camera.gain}",
-        #     "fps": 60
-        # }
-        self.video_info_UI.set("\n".join([f"{key}: {value}" for key, value in self.video_info[self.video_mode].items() if key in self.show_video_info]))
 
     def options_scene(self):
         self.scene = "options"
@@ -132,7 +123,6 @@ class App:
     def back(self):
         if self.scene == "photo":
             self.scene = "main"
-            self.close_camera()
 
         elif self.scene == "saved":
             self.saved_scene.leave()
@@ -191,6 +181,10 @@ class App:
                         if self.scene == 'photo':
                             if event.key == pg.K_SPACE:
                                 self.camera.take_photo()
+
+                        if self.scene == "video":
+                            if event.key == pg.K_SPACE:
+                                self.camera.toggle_video()
 
                         if self.scene == 'main':
                             if event.key == pg.K_w:
@@ -252,8 +246,7 @@ class App:
                 self.saved_scene.render()
 
             elif self.scene == "video":
-                self.display.fill((0, 0, 0))
-                self.video_info_UI.render(self.display)
+                self.video_scene.render()
 
             elif self.scene == "options":
                 self.display.blit(self.background, (0, 0))
